@@ -1,0 +1,2 @@
+Sample config backup (fixture, not real data)
+retention=30

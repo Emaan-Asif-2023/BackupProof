@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Add backup{% endblock %}
+{% block content %}
+<h1>Add backup</h1>
+{% if not assets %}
+<p class="empty">Create an <a href="{{ url_for('pages.assets') }}">asset</a> first.</p>
+{% else %}
+<div class="grid2">
+<section class="card">
+  <h2>Upload a file</h2>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="mode" value="upload">
+    <label for="file">Backup file (max 25 MB)</label>
+    <input id="file" name="file" type="file" required>
+    <label for="u_asset">Asset</label>
+    <select id="u_asset" name="asset_id" required>{% for a in assets %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select>
+    <label for="u_ret">Retention (days)</label>
+    <input id="u_ret" name="retention_days" type="number" min="1" max="3650" value="30">
+    <label for="u_notes">Notes</label>
+    <input id="u_notes" name="notes" maxlength="500">
+    <button type="submit">Upload and checksum</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Register an existing file</h2>
+  <p class="hint">Files from the approved source folder (<code>fixtures/</code>).</p>
+  {% if sources %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="mode" value="register">
+    <label for="source_file">Source file</label>
+    <select id="source_file" name="source_file" required>{% for s in sources %}<option>{{ s }}</option>{% endfor %}</select>
+    <label for="r_asset">Asset</label>
+    <select id="r_asset" name="asset_id" required>{% for a in assets %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select>
+    <label for="r_ret">Retention (days)</label>
+    <input id="r_ret" name="retention_days" type="number" min="1" max="3650" value="30">
+    <label for="r_notes">Notes</label>
+    <input id="r_notes" name="notes" maxlength="500">
+    <button type="submit">Register and checksum</button>
+  </form>
+  {% else %}<p class="empty">No files in the source folder.</p>{% endif %}
+</section>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Backups{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>Backup catalogue</h1>
+  {% if g.user.role in ('admin', 'operator') %}
+  <a class="btn" href="{{ url_for('pages.backup_new') }}">Add backup</a>
+  {% endif %}
+</div>
+
+<form method="get" class="filters" role="search">
+  <label for="q" class="sr">Search</label>
+  <input id="q" name="q" value="{{ q }}" placeholder="Filename, asset or SHA-256" maxlength="100">
+  <label for="asset_id" class="sr">Asset</label>
+  <select id="asset_id" name="asset_id">
+    <option value="">All assets</option>
+    {% for a in assets %}<option value="{{ a.id }}" {{ 'selected' if asset_id == a.id|string }}>{{ a.name }}</option>{% endfor %}
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+{% if backups %}
+<div class="scroll">
+<table>
+  <thead><tr><th>File</th><th>Asset</th><th>Size</th><th>SHA-256 (baseline)</th><th>Retention</th><th>Source</th><th>Added</th></tr></thead>
+  <tbody>
+  {% for b in backups %}
+    <tr>
+      <td><a href="{{ url_for('pages.backup_detail', public_id=b.public_id) }}">{{ b.original_filename }}</a></td>
+      <td>{{ b.asset_name }}</td>
+      <td>{{ '{:,}'.format(b.size_bytes) }} B</td>
+      <td class="mono" title="{{ b.sha256 }}">{{ b.sha256[:16] }}…</td>
+      <td>{{ b.retention_days }} d</td>
+      <td>{{ b.source }}</td>
+      <td>{{ b.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">No backups found.</p>
+{% endif %}
+{% endblock %}

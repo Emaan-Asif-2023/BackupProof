@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h1>User management</h1>
+<section class="card">
+  <h2>New user</h2>
+  <form method="post" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="nu" class="sr">Username</label>
+    <input id="nu" name="username" placeholder="Username" required maxlength="32">
+    <label for="np" class="sr">Password</label>
+    <input id="np" name="password" type="password" placeholder="Password (10+ chars, letters and digits)" required maxlength="128" autocomplete="new-password">
+    <label for="nr" class="sr">Role</label>
+    <select id="nr" name="role"><option>viewer</option><option>operator</option><option>admin</option></select>
+    <button type="submit">Create</button>
+  </form>
+</section>
+<div class="scroll">
+<table>
+  <thead><tr><th>Username</th><th>Role</th><th>Active</th><th>Created</th><th>Change</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ 'yes' if u.is_active else 'no' }}</td><td>{{ u.created_at }}</td>
+    <td>
+      <form method="post" action="{{ url_for('pages.admin_user_update', user_id=u.id) }}" class="inline" data-confirm="Apply this change?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="role{{ u.id }}" class="sr">Role</label>
+        <select id="role{{ u.id }}" name="role">
+          {% for r in ('admin', 'operator', 'viewer') %}<option {{ 'selected' if r == u.role }}>{{ r }}</option>{% endfor %}
+        </select>
+        <label for="act{{ u.id }}" class="sr">Active</label>
+        <select id="act{{ u.id }}" name="is_active">
+          <option value="1" {{ 'selected' if u.is_active }}>active</option>
+          <option value="0" {{ 'selected' if not u.is_active }}>disabled</option>
+        </select>
+        <button type="submit" class="small">Save</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

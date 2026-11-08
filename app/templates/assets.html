@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Assets{% endblock %}
+{% block content %}
+<h1>Assets</h1>
+{% if g.user.role in ('admin', 'operator') %}
+<section class="card">
+  <h2>New asset</h2>
+  <form method="post" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="name" class="sr">Name</label>
+    <input id="name" name="name" placeholder="e.g. Finance DB" required maxlength="64">
+    <label for="description" class="sr">Description</label>
+    <input id="description" name="description" placeholder="Description (optional)" maxlength="500">
+    <button type="submit">Create</button>
+  </form>
+</section>
+{% endif %}
+{% if assets %}
+<div class="scroll">
+<table>
+  <thead><tr><th>Name</th><th>Description</th><th>Backups</th><th>Created</th>{% if g.user.role == 'admin' %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for a in assets %}
+    <tr>
+      <td><a href="{{ url_for('pages.backups', asset_id=a.id) }}">{{ a.name }}</a></td>
+      <td>{{ a.description or '—' }}</td><td>{{ a.backup_count }}</td><td>{{ a.created_at }}</td>
+      {% if g.user.role == 'admin' %}
+      <td>
+        <form method="post" action="{{ url_for('pages.asset_delete', asset_id=a.id) }}" data-confirm="Delete this asset?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="danger small">Delete</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p class="empty">No assets yet.</p>{% endif %}
+{% endblock %}
