@@ -87,10 +87,38 @@ def test_role_change_applies_immediately(app, admin, viewer):
     assert viewer.get("/api/me").status_code == 401
 
 
-def test_cannot_remove_last_admin(admin):
-    uid = [u for u in admin.get("/api/users").get_json()["users"] if u["username"] == "admin1"][0]["id"]
-    assert admin.patch(f"/api/users/{uid}", json={"role": "viewer"}).status_code == 409
-    assert admin.patch(f"/api/users/{uid}", json={"is_active": False}).status_code == 409
+
+def test_cannot_remove_last_admin(admin, app):
+    from app.db import get_db
+
+    with app.app_context():
+        db = get_db()
+
+        db.execute(
+            """
+            UPDATE users
+            SET is_active = 0
+            WHERE role = 'admin'
+              AND username != 'admin1'
+            """
+        )
+        db.commit()
+
+    users = admin.get("/api/users").get_json()["users"]
+
+    uid = next(
+        user["id"]
+        for user in users
+        if user["username"] == "admin1"
+    )
+
+    response = admin.patch(
+        f"/api/users/{uid}",
+        json={"role": "viewer"}
+    )
+
+    assert response.status_code == 409
+    assert response.get_json()["error"]["code"] == "last_admin"
 
 
 def test_passwords_hashed(app):

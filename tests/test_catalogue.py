@@ -99,12 +99,62 @@ def test_backup_id_validation(operator):
     assert operator.get("/api/backups/..%2f..%2fetc").status_code == 404
 
 
-def test_admin_delete_removes_record_and_file(app, admin, operator, asset_id):
-    pid = operator.upload("a.txt", b"x", asset_id).get_json()["public_id"]
-    assert operator.delete(f"/api/backups/{pid}").status_code == 403
-    assert admin.delete(f"/api/backups/{pid}").status_code == 200
-    assert os.listdir(app.config["STORAGE_DIR"]) == []
-    assert admin.get(f"/api/backups/{pid}").status_code == 404
+
+def test_admin_delete_removes_record_and_file(
+    app, admin, operator, asset_id
+):
+    from datetime import datetime, timedelta, timezone
+    from pathlib import Path
+    from app.db import get_db
+
+    pid = operator.upload(
+        "a.txt", b"x", asset_id
+    ).get_json()["public_id"]
+
+    # Operators cannot delete backups
+    assert operator.delete(
+        f"/api/backups/{pid}"
+    ).status_code == 403
+
+    with app.app_context():
+        db = get_db()
+
+        backup = db.execute(
+            "SELECT stored_filename FROM backups WHERE public_id = ?",
+            (pid,)
+        ).fetchone()
+
+        file_path = (
+            Path(app.config["STORAGE_DIR"])
+            / backup["stored_filename"]
+        )
+
+        assert file_path.exists()
+
+        # Simulate an expired retention period
+        old_date = (
+            datetime.now(timezone.utc) - timedelta(days=60)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        db.execute(
+            "UPDATE backups SET created_at = ? WHERE public_id = ?",
+            (old_date, pid)
+        )
+        db.commit()
+
+    # Admin can delete an expired backup
+    response = admin.delete(f"/api/backups/{pid}")
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        remaining = get_db().execute(
+            "SELECT id FROM backups WHERE public_id = ?",
+            (pid,)
+        ).fetchone()
+
+        assert remaining is None
+        assert not file_path.exists()
 
 
 def test_cannot_delete_asset_with_backups(admin, operator, asset_id):

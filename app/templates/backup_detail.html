@@ -1,25 +1,93 @@
+
 {% extends "base.html" %}
 {% block title %}{{ b.original_filename }}{% endblock %}
+
 {% block content %}
+
 <div class="head">
   <h1>{{ b.original_filename }}</h1>
+
   {% if g.user.role == 'admin' %}
-  <form method="post" action="{{ url_for('pages.backup_delete', public_id=b.public_id) }}" data-confirm="Permanently delete this backup record and its stored file?">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <form method="post"
+        action="{{ url_for('pages.backup_delete', public_id=b.public_id) }}"
+        data-confirm="Permanently delete this backup record and its stored file?">
+
+    <input type="hidden"
+           name="csrf_token"
+           value="{{ csrf_token() }}">
+
     <button type="submit" class="danger">Delete</button>
   </form>
   {% endif %}
 </div>
+
 <dl class="card details">
-  <dt>Backup ID</dt><dd class="mono">{{ b.public_id }}</dd>
-  <dt>Asset</dt><dd>{{ b.asset_name }}</dd>
-  <dt>Size</dt><dd>{{ '{:,}'.format(b.size_bytes) }} bytes</dd>
-  <dt>SHA-256 baseline</dt><dd class="mono">{{ b.sha256 }}</dd>
-  <dt>Source</dt><dd>{{ b.source }}</dd>
-  <dt>Status</dt><dd>{{ b.status }}</dd>
-  <dt>Retention</dt><dd>{{ b.retention_days }} days</dd>
-  <dt>Notes</dt><dd>{{ b.notes or '—' }}</dd>
-  <dt>Added by</dt><dd>{{ b.created_by_name }} · {{ b.created_at }}</dd>
+  <dt>Backup ID</dt>
+  <dd class="mono">{{ b.public_id }}</dd>
+
+  <dt>Asset</dt>
+  <dd>{{ b.asset_name }}</dd>
+
+  <dt>Size</dt>
+  <dd>{{ '{:,}'.format(b.size_bytes) }} bytes</dd>
+
+  <dt>SHA-256 baseline</dt>
+  <dd class="mono">{{ b.sha256 }}</dd>
+
+  <dt>Source</dt>
+  <dd>{{ b.source }}</dd>
+
+  <dt>Status</dt>
+  <dd>{{ b.status }}</dd>
+
+  <dt>Retention</dt>
+  <dd>{{ b.retention_days }} days</dd>
+
+  <dt>Notes</dt>
+  <dd>{{ b.notes or '—' }}</dd>
+
+  <dt>Added by</dt>
+  <dd>{{ b.created_by_name }} · {{ b.created_at }}</dd>
 </dl>
-<p><a href="{{ url_for('pages.backups') }}">← Back to catalogue</a></p>
+
+
+<div class="card">
+
+  <h2>Backup Security Verification</h2>
+
+  {% if g.user.role in ('admin', 'operator') %}
+  <button type="button" id="verifyBtn">
+    Verify Integrity
+  </button>
+  {% endif %}
+
+  <button type="button" id="retentionBtn">
+    Check Retention
+  </button>
+
+  <a href="{{ url_for('api.get_backup_manifest', public_id=b.public_id) }}"
+    target="_blank"
+    rel="noopener"
+    class="button">
+    View Manifest
+  </a>
+
+  <div id="verificationResult"
+       data-backup-id="{{ b.public_id }}"
+       data-csrf-token="{{ csrf_token() }}"
+       role="status"
+       aria-live="polite"
+       style="margin-top: 15px;">
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/backup_verification.js') }}" defer></script>
+
+<p>
+  <a href="{{ url_for('pages.backups') }}">
+    ← Back to catalogue
+  </a>
+</p>
+
 {% endblock %}

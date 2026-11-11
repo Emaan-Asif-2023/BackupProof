@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Audit Logs</h2>
+
+<p>Latest 100 recorded system activities.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Outcome</th>
+            <th>Target</th>
+            <th>Details</th>
+            <th>IP Address</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.ts }}</td>
+            <td>{{ log.actor }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.outcome }}</td>
+            <td>{{ log.target or "-" }}</td>
+            <td>{{ log.detail or "-" }}</td>
+            <td>{{ log.ip or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">No audit logs found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

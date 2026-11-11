@@ -4,6 +4,7 @@ from flask import (Blueprint, current_app, flash, g, redirect, render_template, 
 
 from . import audit, security, services
 from .security import login_required, rate_limit, roles_required
+from .db import get_db
 
 bp = Blueprint("pages", __name__)
 WRITE = ("admin", "operator")
@@ -141,8 +142,16 @@ def backup_delete(public_id):
         row = services.delete_backup(public_id, current_app.config["STORAGE_DIR"])
         audit.log("backup_delete", "success", target=row["public_id"])
         flash("Backup deleted.", "ok")
+    
     except services.ValidationError as e:
+        audit.log(
+            "backup_delete",
+            "failure",
+            target=public_id,
+            detail=e.code
+        )
         flash(e.message, "error")
+
     return redirect(url_for("pages.backups"))
 
 
@@ -177,3 +186,24 @@ def admin_user_update(user_id):
         audit.log("request_rejected", "failure", target=request.path, detail=e.code)
         flash(e.message, "error")
     return redirect(url_for("pages.admin_users"))
+
+
+@bp.get("/audit")
+@roles_required("admin")
+def audit_logs():
+    db = get_db()
+
+    logs = db.execute(
+        """
+        SELECT id, ts, actor, action,
+               outcome, target, detail, ip
+        FROM audit_log
+        ORDER BY id DESC
+        LIMIT 100
+        """
+    ).fetchall()
+
+    return render_template(
+        "audit_logs.html",
+        logs=logs
+    )

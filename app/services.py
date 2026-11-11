@@ -321,16 +321,46 @@ def get_backup(public_id):
         " WHERE b.public_id = ?", (public_id,)).fetchone()
 
 
+
 def delete_backup(public_id, storage_dir):
+    from .retention import check_retention
+
     row = get_backup(public_id)
+
     if row is None:
-        raise ValidationError("not_found", "Backup not found.", 404)
+        raise ValidationError(
+            "not_found",
+            "Backup not found.",
+            404
+        )
+
+    # Check retention before deleting anything
+    retention_result = check_retention(public_id)
+
+    if retention_result["status"] == "active":
+        raise ValidationError(
+            "retention_active",
+            "Backup cannot be deleted before its retention period expires.",
+            409
+        )
+
+    # Retention expired: deletion is permitted
     db = get_db()
-    db.execute("DELETE FROM backups WHERE id = ?", (row["id"],))
+
+    db.execute(
+        "DELETE FROM backups WHERE id = ?",
+        (row["id"],)
+    )
     db.commit()
-    path = os.path.join(storage_dir, row["stored_filename"])
+
+    path = os.path.join(
+        storage_dir,
+        row["stored_filename"]
+    )
+
     if os.path.isfile(path):
         os.remove(path)
+
     return row
 
 

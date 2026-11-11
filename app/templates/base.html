@@ -12,11 +12,17 @@
 <header class="bar">
   <a class="brand" href="{{ url_for('pages.index') }}">BackupProof</a>
   {% if g.user %}
+  
   <nav aria-label="Main">
     <a href="{{ url_for('pages.backups') }}">Backups</a>
     <a href="{{ url_for('pages.assets') }}">Assets</a>
-    {% if g.user.role == 'admin' %}<a href="{{ url_for('pages.admin_users') }}">Users</a>{% endif %}
+
+    {% if g.user.role == 'admin' %}
+      <a href="{{ url_for('pages.admin_users') }}">Users</a>
+      <a href="{{ url_for('pages.audit_logs') }}">Audit Logs</a>
+    {% endif %}
   </nav>
+
   <form method="post" action="{{ url_for('pages.logout') }}" class="who">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span>{{ g.user.username }} <em class="role role-{{ g.user.role }}">{{ g.user.role }}</em></span>

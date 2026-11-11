@@ -1,7 +1,7 @@
 """JSON API (/api/*). Session-cookie auth + CSRF header; authorization enforced per route."""
 from flask import Blueprint, current_app, g, jsonify, request, session
 
-from . import audit, security, services
+from . import audit, security, services, integrity, retention
 from .security import login_required, rate_limit, roles_required
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -145,9 +145,100 @@ def register():
     return jsonify({"public_id": pid, "sha256": digest}), 201
 
 
+
 @bp.delete("/backups/<public_id>")
 @roles_required("admin")
 def remove_backup(public_id):
-    row = services.delete_backup(public_id, current_app.config["STORAGE_DIR"])
-    audit.log("backup_delete", "success", target=row["public_id"])
-    return jsonify({"status": "deleted"})
+    try:
+        row = services.delete_backup(
+            public_id,
+            current_app.config["STORAGE_DIR"]
+        )
+
+        audit.log(
+            "backup_delete",
+            "success",
+            target=row["public_id"]
+        )
+
+        return jsonify({"status": "deleted"}), 200
+
+    except services.ValidationError as e:
+        audit.log(
+            "backup_delete",
+            "failure",
+            target=public_id,
+            detail=e.code
+        )
+
+        return jsonify({
+            "error": {
+                "code": e.code,
+                "message": e.message
+            }
+        }), e.status
+
+
+@bp.post("/backups/<public_id>/verify")
+@roles_required(*WRITE)
+@rate_limit("verify", 30, 60)
+def verify_backup_integrity(public_id):
+    result = integrity.verify_backup(
+        public_id,
+        current_app.config["STORAGE_DIR"]
+    )
+
+    audit.log(
+        "backup_integrity_verify",
+        "success" if result["status"] == "verified" else "failure",
+        target=public_id,
+        detail=f"status={result['status']}"
+    )
+
+    return jsonify(result), 200
+
+
+@bp.get("/backups/<public_id>/retention")
+@login_required
+@rate_limit("retention_check", 30, 60)
+def check_backup_retention(public_id):
+    result = retention.check_retention(public_id)
+
+    if result["status"] == "not_found":
+        audit.log(
+            "backup_retention_check",
+            "failure",
+            target=public_id,
+            detail="backup_not_found"
+        )
+        return jsonify({
+            "error": {
+                "code": "backup_not_found",
+                "message": "Backup not found."
+            }
+        }), 404
+
+    audit.log(
+        "backup_retention_check",
+        "success",
+        target=public_id,
+        detail=f"status={result['status']}"
+    )
+
+    return jsonify(result), 200
+
+
+@bp.get("/backups/<public_id>/manifest")
+@login_required
+@rate_limit("manifest", 30, 60)
+def get_backup_manifest(public_id):
+    manifest = integrity.generate_manifest(public_id)
+
+    audit.log(
+        "backup_manifest_view",
+        "success",
+        target=public_id
+    )
+
+    return jsonify(manifest), 200
+
